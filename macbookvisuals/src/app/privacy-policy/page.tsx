@@ -8,11 +8,12 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="max-w-3xl mx-auto px-6 py-16">
-      <h1 className="text-4xl font-bold mb-6">Privacy Policy</h1>
-      <p className="text-sm text-gray-400 mb-10">Last updated: [Insert Date]</p>
+    <main className="max-w-3xl mx-auto px-6 py-16 flex flex-col items-center">
+      <h1 className="text-4xl font-bold mb-6 text-center">Privacy Policy</h1>
+      <p className="text-sm text-gray-400 mb-10 text-center">Last updated: 17.12.2025</p>
 
-      <section className="space-y-6 text-lg leading-relaxed">
+      <section className="space-y-6 text-lg leading-relaxed w-full">
+
         <p>
           Welcome to <strong>MacBookVisuals</strong> (accessible via{" "}
           <em>macbookvisuals.com</em>, <em>macbookvisuals.co.uk</em>, and{" "}
@@ -23,7 +24,7 @@ export default function PrivacyPolicyPage() {
         <p>
           We intentionally collect <strong>no personal data</strong>. We do not store or track:
         </p>
-        <ul className="list-disc ml-6">
+        <ul className="list-disc list-inside text-left mx-auto max-w-md">
           <li>Names or email addresses</li>
           <li>IP addresses</li>
           <li>Cookies or browser identifiers</li>
@@ -40,7 +41,7 @@ export default function PrivacyPolicyPage() {
 
         <h2 className="text-2xl font-semibold mt-8">3. No Third-Party Services</h2>
         <p>We do not use:</p>
-        <ul className="list-disc ml-6">
+        <ul className="list-disc list-inside text-left mx-auto max-w-md">
           <li>Google Analytics</li>
           <li>Advertising networks</li>
           <li>External data processors</li>

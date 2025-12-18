@@ -8,11 +8,11 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="max-w-3xl mx-auto px-6 py-16">
-      <h1 className="text-4xl font-bold mb-6">Terms of Service</h1>
-      <p className="text-sm text-gray-400 mb-10">Last updated: [Insert Date]</p>
+    <main className="max-w-3xl mx-auto px-6 py-16 flex flex-col items-center">
+      <h1 className="text-4xl font-bold mb-6 text-center">Terms of Service</h1>
+      <p className="text-sm text-gray-400 mb-10 text-center">Last updated: 17.12.2025</p>
 
-      <section className="space-y-6 text-lg leading-relaxed">
+      <section className="space-y-6 text-lg leading-relaxed text-center">
         <p>
           These Terms of Service govern your use of <strong>macbookvisuals.com</strong>,{" "}
           <strong>macbookvisuals.co.uk</strong>, and <strong>macbookvisuals.uk</strong>. By using our
