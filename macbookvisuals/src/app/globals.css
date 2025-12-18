@@ -331,3 +331,111 @@ body {
 .legal-footer a:hover {
   text-decoration: underline;
 }
+
+/* ===== Upload Page Layout ===== */
+
+.upload-page {
+  min-height: calc(100vh - 64px); /* account for navbar */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
+}
+
+/* Upload Card */
+
+.upload-card {
+  width: 100%;
+  max-width: 420px;
+
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+
+  padding: 32px;
+  text-align: center;
+}
+
+/* Title */
+
+.upload-card h1 {
+  font-size: 28px;
+  margin-bottom: 24px;
+}
+
+/* File input */
+
+.upload-card input[type="file"] {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+/* Upload button */
+
+.upload-card button {
+  width: 100%;
+  padding: 12px;
+
+  background: white;
+  color: black;
+  border: none;
+  border-radius: 8px;
+
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.upload-card button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Message */
+
+.upload-message {
+  margin-top: 16px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+/* Upload button */
+
+.upload-btn {
+  width: 100%;
+  padding: 12px;
+
+  background: white;
+  color: black;
+  border: none;
+  border-radius: 8px;
+
+  font-weight: 600;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.upload-btn.loading {
+  background: #888;
+  color: #222;
+  cursor: not-allowed;
+}
+
+/* Spinner */
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-top-color: black;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
