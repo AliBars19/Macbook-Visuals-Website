@@ -3,8 +3,10 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
-const UPLOAD_DIR = path.join(process.cwd(), "uploads");
-const DATA_FILE = path.join(process.cwd(), "data", "videos.json");
+const ROOT = path.resolve("./");
+const DATA_FILE = path.join(ROOT, "data", "videos.json");
+const UPLOAD_DIR = path.join(ROOT, "public", "uploads");
+
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();

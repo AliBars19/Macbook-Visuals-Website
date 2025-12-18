@@ -1,4 +1,3 @@
-// app/components/VideoCard.tsx
 "use client";
 
 import { useState } from "react";
@@ -8,14 +7,25 @@ type VideoCardProps = {
   video: Video;
   onSave?: (updated: Video) => void;
   onPublish?: (videoId: string) => void;
+  onDelete?: (videoId: string) => void;
 };
 
-export default function VideoCard({ video, onSave, onPublish }: VideoCardProps) {
+export default function VideoCard({
+  video,
+  onSave,
+  onPublish,
+  onDelete,
+}: VideoCardProps) {
   const [caption, setCaption] = useState(video.caption);
   const [scheduledAt, setScheduledAt] = useState(video.scheduledAt ?? "");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const isPublished = video.status === "published";
 
   const handleSave = async () => {
+    if (!onSave) return;
+
     setSaving(true);
 
     const updated: Video = {
@@ -24,34 +34,39 @@ export default function VideoCard({ video, onSave, onPublish }: VideoCardProps) 
       scheduledAt: scheduledAt || undefined,
     };
 
-    // FRONTEND ONLY – you wire the backend
     try {
-      if (onSave) {
-        await onSave(updated);
-      }
+      await onSave(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
     } finally {
       setSaving(false);
     }
   };
 
   const handlePublishClick = async () => {
-    if (onPublish) {
-      await onPublish(video.id);
-    }
+    if (!onPublish) return;
+    await onPublish(video.id);
   };
 
-  const statusLabel = video.status.charAt(0).toUpperCase() + video.status.slice(1);
+  const handleDeleteClick = async () => {
+    if (!onDelete) return;
+    const ok = confirm("Delete this video? This cannot be undone.");
+    if (!ok) return;
+    await onDelete(video.id);
+  };
+
+  const statusLabel =
+    video.status.charAt(0).toUpperCase() + video.status.slice(1);
 
   return (
     <div className="card video-card">
       <div className="video-thumb">
-        {/* video.url should be playable – you decide the backend path */}
         <video src={video.url} controls width={260} />
       </div>
 
       <div className="video-meta">
         <p className="video-filename">{video.filename}</p>
-        <span className={`status status-${video.status}`}>{statusLabel}</span>
+        <span className={`status ${video.status}`}>{statusLabel}</span>
       </div>
 
       <label className="field">
@@ -60,6 +75,7 @@ export default function VideoCard({ video, onSave, onPublish }: VideoCardProps) 
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           rows={3}
+          disabled={isPublished}
         />
       </label>
 
@@ -69,15 +85,33 @@ export default function VideoCard({ video, onSave, onPublish }: VideoCardProps) 
           type="datetime-local"
           value={scheduledAt}
           onChange={(e) => setScheduledAt(e.target.value)}
+          disabled={isPublished}
         />
       </label>
 
       <div className="video-actions">
-        <button onClick={handleSave} disabled={saving} className="btn primary">
-          {saving ? "Saving..." : "Save"}
+        <button
+          onClick={handleSave}
+          disabled={saving || isPublished}
+          className="btn primary"
+        >
+          {saving ? "Saving..." : saved ? "Saved ✓" : "Save"}
         </button>
-        <button onClick={handlePublishClick} className="btn outline">
+
+        <button
+          onClick={handlePublishClick}
+          disabled={isPublished}
+          className="btn outline"
+        >
           Publish now
+        </button>
+
+        <button
+          onClick={handleDeleteClick}
+          disabled={isPublished}
+          className="btn danger"
+        >
+          Delete
         </button>
       </div>
     </div>
