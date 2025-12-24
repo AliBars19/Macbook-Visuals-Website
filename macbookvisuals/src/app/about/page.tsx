@@ -25,10 +25,6 @@ export default function AboutPage() {
           including After Effects pipelines and scripting tools, while still
           allowing for manual review and intervention.
         </p>
-
-        <p className="about-note">
-          This project is currently under active development.
-        </p>
       </div>
     </main>
   );

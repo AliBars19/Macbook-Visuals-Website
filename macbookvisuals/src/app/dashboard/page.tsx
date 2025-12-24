@@ -51,21 +51,16 @@ export default function Dashboard() {
   };
 
   const handleDelete = async (videoId: string) => {
-    const ok = confirm("Delete this video? This cannot be undone.");
-    if (!ok) return;
-
     const res = await fetch(`/api/videos/${videoId}`, {
       method: "DELETE",
     });
 
     if (!res.ok) {
-      alert("Failed to delete video");
+      console.error("Failed to delete video");
       return;
     }
-
     setVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
-
 
   const handlePublish = async (videoId: string) => {
     const res = await fetch(`/api/videos/${videoId}/publish`, {

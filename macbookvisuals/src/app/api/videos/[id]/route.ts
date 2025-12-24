@@ -6,26 +6,31 @@ const ROOT = path.resolve("./");
 const DATA_FILE = path.join(ROOT, "data", "videos.json");
 const UPLOAD_DIR = path.join(ROOT, "public", "uploads");
 
-
 /* =========================
    DELETE /api/videos/:id
    ========================= */
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
+
   if (!fs.existsSync(DATA_FILE)) {
     return NextResponse.json({ error: "No videos data" }, { status: 404 });
   }
 
   const videos = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-  const index = videos.findIndex((v: any) => v.id === params.id);
+  const index = videos.findIndex((v: any) => v.id === id);
 
   if (index === -1) {
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }
 
   const video = videos[index];
+
+  // Debug logs (safe to keep while testing)
+  console.log("DELETE requested for ID:", id);
+  console.log("Existing video IDs:", videos.map((v: any) => v.id));
 
   // Delete video file
   if (video.url) {
@@ -37,10 +42,8 @@ export async function DELETE(
         fs.unlinkSync(filePath);
       } catch (err) {
         console.warn("Failed to delete video file:", err);
-        // We still continue and delete the JSON entry
       }
     }
-
   }
 
   // Remove from JSON
@@ -55,8 +58,10 @@ export async function DELETE(
    ========================= */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
+
   if (!fs.existsSync(DATA_FILE)) {
     return NextResponse.json({ error: "No videos data" }, { status: 404 });
   }
@@ -64,7 +69,7 @@ export async function PATCH(
   const updates = await req.json();
   const videos = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
 
-  const video = videos.find((v: any) => v.id === params.id);
+  const video = videos.find((v: any) => v.id === id);
   if (!video) {
     return NextResponse.json({ error: "Video not found" }, { status: 404 });
   }
