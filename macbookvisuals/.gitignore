@@ -2,6 +2,8 @@
 
 /public/uploads/
 /tokens.txt
+/.env.local
+/data/tokens.json
 
 # dependencies
 /node_modules
