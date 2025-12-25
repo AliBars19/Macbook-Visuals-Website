@@ -1,34 +1,58 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Video } from "../types";
 import VideoCard from "../components/VideoCard";
+import LogoutButton from "../components/LogoutButton";
 
 export default function Dashboard() {
+  const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
 
+  // Check authentication on page load
   useEffect(() => {
-    const fetchVideos = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const res = await fetch("/api/videos");
-        if (!res.ok) throw new Error("Failed to fetch videos");
-
-        const data: Video[] = await res.json();
-        setVideos(data);
-      } catch (err: any) {
-        setError(err.message ?? "Unknown error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVideos();
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/status');
+      const data = await response.json();
+      
+      if (!data.authenticated) {
+        // Not logged in, redirect to login
+        router.push('/login');
+      } else {
+        // Authenticated, load videos
+        setAuthChecking(false);
+        fetchVideos();
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      router.push('/login');
+    }
+  };
+
+  const fetchVideos = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await fetch("/api/videos");
+      if (!res.ok) throw new Error("Failed to fetch videos");
+
+      const data: Video[] = await res.json();
+      setVideos(data);
+    } catch (err: any) {
+      setError(err.message ?? "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async (updated: Video) => {
     const res = await fetch(`/api/videos/${updated.id}`, {
@@ -37,6 +61,8 @@ export default function Dashboard() {
       body: JSON.stringify({
         caption: updated.tiktok.caption,
         scheduledAt: updated.scheduledAt,
+        tiktok: updated.tiktok,
+        youtube: updated.youtube,
       }),
     });
 
@@ -74,14 +100,40 @@ export default function Dashboard() {
 
     setVideos((prev) =>
       prev.map((v) =>
-        v.id === videoId ? { ...v, status: "published" } : v
+        v.id === videoId 
+          ? { 
+              ...v, 
+              status: "published",
+              tiktok: { ...v.tiktok, status: "published" },
+              youtube: { ...v.youtube, status: "published" }
+            } 
+          : v
       )
     );
   };
 
+  // Show loading while checking auth
+  if (authChecking) {
+    return (
+      <main className="dashboard">
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <p>Checking authentication...</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="dashboard">
-      <h1 className="title">Your Video Dashboard</h1>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: '20px'
+      }}>
+        <h1 className="title">Your Video Dashboard</h1>
+        <LogoutButton />
+      </div>
 
       {loading && <p>Loading videos...</p>}
       {error && <p className="error">Error: {error}</p>}
