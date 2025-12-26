@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-export default function AuthSuccess() {
+function AuthSuccessContent() {
   const searchParams = useSearchParams();
   const platform = searchParams.get('platform');
   const [countdown, setCountdown] = useState(5);
@@ -43,11 +44,11 @@ export default function AuthSuccess() {
       }}>
         <h1 style={{ fontSize: '48px', marginBottom: '20px' }}>✅</h1>
         <h2 style={{ marginBottom: '20px' }}>
-          {platform === 'youtube' ? 'YouTube' : 'TikTok'} Connected!
+          {platform === 'youtube' ? 'YouTube' : platform === 'tiktok' ? 'TikTok' : 'Platform'} Connected!
         </h2>
         <p style={{ color: '#888', marginBottom: '30px' }}>
           Your account has been successfully connected and authorized.
-          You can now publish videos to {platform === 'youtube' ? 'YouTube' : 'TikTok'}.
+          You can now publish videos to {platform === 'youtube' ? 'YouTube' : platform === 'tiktok' ? 'TikTok' : 'the platform'}.
         </p>
         <p style={{ color: '#666' }}>
           Redirecting to dashboard in {countdown} seconds...
@@ -68,5 +69,22 @@ export default function AuthSuccess() {
         </button>
       </div>
     </main>
+  );
+}
+
+export default function AuthSuccess() {
+  return (
+    <Suspense fallback={
+      <main style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh'
+      }}>
+        <div>Loading...</div>
+      </main>
+    }>
+      <AuthSuccessContent />
+    </Suspense>
   );
 }
