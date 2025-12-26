@@ -12,6 +12,7 @@ const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 /**
  * POST /api/videos/:id/publish
  * Publishes video to both TikTok and YouTube
+ * Deletes video file and metadata after successful upload to both platforms
  */
 export async function POST(
   _req: NextRequest,
@@ -23,7 +24,7 @@ export async function POST(
     return NextResponse.json({ error: 'No videos data' }, { status: 404 });
   }
 
-  const videos: Video[] = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+  let videos: Video[] = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
   const video = videos.find((v) => v.id === id);
 
   if (!video) {
@@ -123,11 +124,43 @@ export async function POST(
   // Save updated video data
   fs.writeFileSync(DATA_FILE, JSON.stringify(videos, null, 2));
 
+  // ========================================
+  // AUTO-CLEANUP: Delete video after successful publish
+  // ========================================
+  let cleanupPerformed = false;
+  
+  if (tiktokSuccess && youtubeSuccess) {
+    try {
+      console.log('\n  Both platforms successful - cleaning up video file...');
+      
+      // Delete video file
+      if (fs.existsSync(videoPath)) {
+        fs.unlinkSync(videoPath);
+        console.log('✓ Video file deleted:', video.filename);
+      }
+
+      // Remove from videos.json
+      videos = videos.filter((v) => v.id !== id);
+      fs.writeFileSync(DATA_FILE, JSON.stringify(videos, null, 2));
+      console.log(' Metadata removed from database');
+      
+      cleanupPerformed = true;
+      console.log(' Cleanup complete - video removed from server');
+      
+    } catch (cleanupError) {
+      console.error('  Cleanup failed:', cleanupError);
+      // Don't fail the whole request if cleanup fails
+    }
+  } else {
+    console.log('\n⏸  Keeping video file (not all platforms succeeded)');
+  }
+
   console.log('========================================\n');
 
   return NextResponse.json({
     ok: true,
-    video,
+    video: cleanupPerformed ? null : video, // null if deleted
+    cleaned: cleanupPerformed,
     results: {
       tiktok: {
         success: tiktokSuccess,
@@ -140,7 +173,9 @@ export async function POST(
         error: video.youtube.error,
       },
     },
-    message: tiktokSuccess && youtubeSuccess
+    message: cleanupPerformed 
+      ? 'Published to both platforms successfully and removed from server'
+      : tiktokSuccess && youtubeSuccess
       ? 'Published to both platforms successfully'
       : tiktokSuccess || youtubeSuccess
       ? 'Published to one platform (check errors for failed platform)'

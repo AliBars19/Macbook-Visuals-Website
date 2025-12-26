@@ -90,27 +90,58 @@ export default function Dashboard() {
   };
 
   const handlePublish = async (videoId: string) => {
-    const res = await fetch(`/api/videos/${videoId}/publish`, {
-      method: "POST",
-    });
+    try {
+      const res = await fetch(`/api/videos/${videoId}/publish`, {
+        method: 'POST',
+      });
 
-    if (!res.ok) {
-      console.error("Failed to publish video");
-      return;
+      if (!res.ok) {
+        console.error('Failed to publish video');
+        alert('Failed to publish video');
+        return;
+      }
+
+      const data = await res.json();
+
+      // Check if video was cleaned up (deleted)
+      if (data.cleaned) {
+        console.log('✓ Video published and removed from server');
+
+        // Remove from local state (video no longer exists)
+        setVideos((prev) => prev.filter((v) => v.id !== videoId));
+
+        // Show success message
+        alert(`✓ Published successfully to both platforms!\n\nVideo has been removed from server.\n\nTikTok: ${data.results.tiktok.videoId}\nYouTube: ${data.results.youtube.videoId}`);
+
+      } else {
+        // Video still exists (partial failure or kept for some reason)
+        setVideos((prev) =>
+          prev.map((v) =>
+            v.id === videoId 
+              ? { 
+                  ...v, 
+                  status: data.video.status,
+                  tiktok: data.video.tiktok,
+                  youtube: data.video.youtube
+                } 
+              : v
+          )
+        );
+
+        // Show appropriate message
+        if (data.results.tiktok.success && data.results.youtube.success) {
+          alert('✓ Published to both platforms!\n\nVideo kept on server for review.');
+        } else if (data.results.tiktok.success || data.results.youtube.success) {
+          alert('⚠ Partial success - one platform failed.\n\nVideo kept on server. Check dashboard for details.');
+        } else {
+          alert('✗ Failed to publish to both platforms.\n\nVideo kept on server. Check console for errors.');
+        }
+      }
+
+    } catch (error) {
+      console.error('Publish error:', error);
+      alert('Error publishing video');
     }
-
-    setVideos((prev) =>
-      prev.map((v) =>
-        v.id === videoId 
-          ? { 
-              ...v, 
-              status: "published",
-              tiktok: { ...v.tiktok, status: "published" },
-              youtube: { ...v.youtube, status: "published" }
-            } 
-          : v
-      )
-    );
   };
 
   // Show loading while checking auth
