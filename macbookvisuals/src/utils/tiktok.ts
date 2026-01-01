@@ -9,9 +9,6 @@ export interface TikTokPublishResult {
   error?: string;
 }
 
-/**
- * Publishes a video to TikTok using the Content Posting API
- */
 export async function publishToTikTok(
   videoPath: string,
   caption: string
@@ -28,14 +25,13 @@ export async function publishToTikTok(
 
     console.log(`Video size: ${(videoSize / 1024 / 1024).toFixed(2)} MB`);
 
-    // TikTok chunk size limits (64MB max per chunk)
-    const MAX_CHUNK_SIZE = 64 * 1024 * 1024; // 64MB
-    const chunkSize = Math.min(videoSize, MAX_CHUNK_SIZE);
-    const totalChunks = Math.ceil(videoSize / chunkSize);
+    // TikTok file size limit check (usually 287MB for production)
+    if (videoSize > 287 * 1024 * 1024) {
+      throw new Error('Video exceeds TikTok file size limit (287MB)');
+    }
 
-    console.log(`Uploading in ${totalChunks} chunk(s) of ${(chunkSize / 1024 / 1024).toFixed(2)} MB each`);
-
-    // Step 1: Initialize upload
+    // Step 1: Initialize upload (single chunk)
+    console.log('Initializing TikTok upload...');
     const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/video/init/', {
       method: 'POST',
       headers: {
@@ -45,7 +41,7 @@ export async function publishToTikTok(
       body: JSON.stringify({
         post_info: {
           title: caption,
-          privacy_level: 'SELF_ONLY', // Use 'PUBLIC_TO_EVERYONE' for public
+          privacy_level: 'PUBLIC_TO_EVERYONE', // Change to 'SELF_ONLY' for drafts
           disable_duet: false,
           disable_comment: false,
           disable_stitch: false,
@@ -54,8 +50,8 @@ export async function publishToTikTok(
         source_info: {
           source: 'FILE_UPLOAD',
           video_size: videoSize,
-          chunk_size: chunkSize,
-          total_chunk_count: totalChunks,
+          chunk_size: videoSize, // Upload entire file in one chunk
+          total_chunk_count: 1,
         },
       }),
     });
@@ -70,40 +66,31 @@ export async function publishToTikTok(
     const uploadUrl = initData.data.upload_url;
     const publishId = initData.data.publish_id;
 
-    console.log('Upload initialized, publish_id:', publishId);
+    console.log('✓ Upload initialized, publish_id:', publishId);
 
-    // Step 2: Upload video chunks
-    for (let i = 0; i < totalChunks; i++) {
-      const start = i * chunkSize;
-      const end = Math.min(start + chunkSize, videoSize);
-      const chunk = videoBuffer.slice(start, end);
+    // Step 2: Upload video to the provided URL
+    console.log('Uploading video to TikTok...');
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'video/mp4',
+        'Content-Length': videoSize.toString(),
+      },
+      body: videoBuffer,
+    });
 
-      console.log(`Uploading chunk ${i + 1}/${totalChunks}...`);
-
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'video/mp4',
-          'Content-Range': `bytes ${start}-${end - 1}/${videoSize}`,
-          'Content-Length': chunk.length.toString(),
-        },
-        body: chunk,
-      });
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.text();
-        console.error(`TikTok chunk ${i + 1} upload failed:`, errorData);
-        throw new Error(`TikTok chunk upload failed: ${errorData}`);
-      }
-
-      console.log(`✓ Chunk ${i + 1}/${totalChunks} uploaded`);
+    if (!uploadResponse.ok) {
+      const errorData = await uploadResponse.text();
+      console.error('TikTok upload failed:', errorData);
+      throw new Error(`TikTok upload failed: ${errorData}`);
     }
 
-    console.log('All chunks uploaded successfully');
+    console.log('✓ Video uploaded successfully');
 
     // Step 3: Check publish status
+    console.log('Checking publish status...');
     let attempts = 0;
-    const maxAttempts = 30; // Increased for larger videos
+    const maxAttempts = 40; // Increased for larger videos (2 minutes max)
     let publishStatus = 'PROCESSING';
     let videoId = '';
 
@@ -129,7 +116,7 @@ export async function publishToTikTok(
           videoId = statusData.data.publicaly_available_post_id[0];
         }
 
-        console.log(`Attempt ${attempts + 1}: Status = ${publishStatus}`);
+        console.log(`Attempt ${attempts + 1}/${maxAttempts}: Status = ${publishStatus}`);
 
         if (publishStatus === 'PUBLISH_COMPLETE') {
           console.log('✓ TikTok publish complete! Video ID:', videoId);
@@ -139,7 +126,9 @@ export async function publishToTikTok(
             publishId: publishId,
           };
         } else if (publishStatus === 'FAILED') {
-          throw new Error('TikTok publish failed');
+          // Get failure reason if available
+          const failReason = statusData.data.fail_reason || 'Unknown error';
+          throw new Error(`TikTok publish failed: ${failReason}`);
         }
       }
 
@@ -148,10 +137,11 @@ export async function publishToTikTok(
 
     // Timeout - still processing
     console.log('⏱ TikTok publish still processing after max attempts');
+    console.log('Video may still be processing - check TikTok app');
     return {
       success: false,
       publishId: publishId,
-      error: 'Publish timeout - still processing',
+      error: 'Publish timeout - video still processing (check TikTok app)',
     };
 
   } catch (error) {

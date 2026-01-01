@@ -17,7 +17,9 @@ export default function Navbar() {
   return (
     <nav className="nav">
       <div className="nav-left">
-        <span className="nav-logo">MacbookVisuals</span>
+        <Link href="/" className="nav-logo" style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>
+          MacbookVisuals
+        </Link>
       </div>
       <div className="nav-links">
         {links.map((link) => {
