@@ -51,7 +51,7 @@ export async function GET() {
   const state = crypto.randomBytes(16).toString('base64url');
 
   // Build TikTok OAuth URL
-  const authUrl = new URL('https://www.tiktok.com/v2/oauth/authorize/');
+  const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
   authUrl.searchParams.set('client_key', clientKey);
   authUrl.searchParams.set('scope', scopes);
   authUrl.searchParams.set('response_type', 'code');
