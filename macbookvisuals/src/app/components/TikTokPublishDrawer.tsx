@@ -58,7 +58,15 @@ export default function TikTokPublishDrawer({
     if (isOpen && video) {
       loadCreatorInfo();
       setTitle(video.tiktok.caption);
+      // Prevent body scroll when drawer is open
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
     }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen, video]);
 
   useEffect(() => {
@@ -153,121 +161,271 @@ export default function TikTokPublishDrawer({
 
   return (
     <>
+      <style jsx>{`
+        .drawer-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          z-index: 9998;
+          opacity: ${isOpen ? '1' : '0'};
+          pointer-events: ${isOpen ? 'all' : 'none'};
+          transition: opacity 0.3s ease;
+        }
+        
+        .drawer-container {
+          position: fixed;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: 600px;
+          max-width: 100vw;
+          background: linear-gradient(to bottom, #0d0d15, #050509);
+          z-index: 9999;
+          box-shadow: -10px 0 50px rgba(0, 0, 0, 0.5);
+          transform: translateX(${isOpen ? '0' : '100%'});
+          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          flex-direction: column;
+        }
+        
+        .drawer-header {
+          flex-shrink: 0;
+          background: linear-gradient(to right, #0d0d15, #050509);
+          border-bottom: 1px solid rgba(0, 245, 255, 0.2);
+          padding: 20px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        
+        .drawer-content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px;
+        }
+        
+        .drawer-content::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        .drawer-content::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .drawer-content::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #00f5ff, #ff0050);
+          border-radius: 4px;
+        }
+      `}</style>
+
       {/* Backdrop */}
-      <div 
-        className={`fixed inset-0 bg-black transition-opacity duration-300 z-[100] ${
-          isOpen ? 'opacity-60' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={onClose}
-      />
+      <div className="drawer-backdrop" onClick={onClose} />
       
-      {/* Drawer Container */}
-      <div 
-        className={`fixed top-0 right-0 h-full w-full sm:w-[90vw] md:w-[600px] bg-gradient-to-b from-[#0d0d15] to-[#050509] z-[101] transform transition-transform duration-500 ease-out shadow-2xl ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        style={{
-          boxShadow: '-10px 0 50px rgba(0, 0, 0, 0.5)',
-        }}
-      >
-        {/* Fixed Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-[#0d0d15] to-[#050509] border-b border-cyan-500/20 px-6 py-5 flex items-center justify-between z-10 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-pink-500 flex items-center justify-center animate-pulse">
+      {/* Drawer */}
+      <div className="drawer-container">
+        {/* Header */}
+        <div className="drawer-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #00f5ff, #ff0050)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'pulse 2s ease-in-out infinite'
+            }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
                 <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/>
               </svg>
             </div>
             <div>
-              <h2 className="text-2xl font-black tracking-tight bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">
+              <h2 style={{
+                margin: 0,
+                fontSize: '24px',
+                fontWeight: '900',
+                background: 'linear-gradient(to right, #00f5ff, #ff0050)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.5px'
+              }}>
                 Post to TikTok
               </h2>
-              <p className="text-xs text-gray-500">Direct Post API</p>
+              <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Direct Post API</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center group"
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'background 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400 group-hover:text-white transition-colors">
-              <path d="M18 6L6 18M6 6l12 12" strokeWidth="2.5" strokeLinecap="round"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
           </button>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="overflow-y-auto h-[calc(100vh-80px)] px-6 pb-6">
+        {/* Content */}
+        <div className="drawer-content">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <div className="relative">
-                <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"/>
-                <div className="absolute inset-0 w-16 h-16 border-4 border-pink-500/20 border-b-pink-400 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '1.5s'}}/>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: '16px' }}>
+              <div style={{ position: 'relative', width: '64px', height: '64px' }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  border: '4px solid rgba(0, 245, 255, 0.2)',
+                  borderTopColor: '#00f5ff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}/>
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '64px',
+                  height: '64px',
+                  border: '4px solid rgba(255, 0, 80, 0.2)',
+                  borderBottomColor: '#ff0050',
+                  borderRadius: '50%',
+                  animation: 'spin 1.5s linear infinite reverse'
+                }}/>
               </div>
-              <p className="text-gray-400 animate-pulse">Loading creator info...</p>
+              <p style={{ color: '#888', animation: 'pulse 2s ease-in-out infinite' }}>Loading creator info...</p>
+              <style jsx>{`
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.5; }
+                }
+              `}</style>
             </div>
           ) : (
-            <div className="space-y-6 pt-6">
-              {/* Creator Info Card */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Creator Info */}
               {creatorInfo && (
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500/10 to-pink-500/10 p-4 border border-cyan-500/20">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-transparent rounded-full blur-3xl"/>
-                  <div className="relative flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-pink-500 p-[2px]">
-                      <div className="w-full h-full rounded-2xl bg-[#0d0d15] flex items-center justify-center">
-                        <span className="text-2xl font-black bg-gradient-to-br from-cyan-400 to-pink-400 bg-clip-text text-transparent">
+                <div style={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(255, 0, 80, 0.1))',
+                  padding: '16px',
+                  border: '1px solid rgba(0, 245, 255, 0.2)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '16px',
+                      background: 'linear-gradient(135deg, #00f5ff, #ff0050)',
+                      padding: '2px'
+                    }}>
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '14px',
+                        background: '#0d0d15',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <span style={{
+                          fontSize: '24px',
+                          fontWeight: '900',
+                          background: 'linear-gradient(135deg, #00f5ff, #ff0050)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }}>
                           {creatorInfo.creator_username[0].toUpperCase()}
                         </span>
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 font-medium">Posting as</p>
-                      <p className="text-lg font-bold text-white">@{creatorInfo.creator_username}</p>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#888', fontWeight: '500' }}>Posting as</p>
+                      <p style={{ margin: 0, fontSize: '18px', color: 'white', fontWeight: '700' }}>@{creatorInfo.creator_username}</p>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Video Preview */}
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-gray-300 uppercase tracking-wider">Video Preview</label>
-                <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-gray-800 hover:border-cyan-500/50 transition-all duration-300 group">
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+                  Video Preview
+                </label>
+                <div style={{
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  border: '2px solid #333',
+                  transition: 'border-color 0.3s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.borderColor = '#00f5ff'}
+                onMouseOut={(e) => e.currentTarget.style.borderColor = '#333'}>
                   <video 
                     src={encodeURI(video.url)}
                     controls
-                    className="w-full aspect-video"
+                    style={{ width: '100%', display: 'block', aspectRatio: '16/9', background: '#000' }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"/>
                 </div>
-                <p className="text-xs text-gray-600 font-mono">{video.filename}</p>
+                <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#666', fontFamily: 'monospace' }}>{video.filename}</p>
               </div>
 
-              {/* Title Field */}
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-gray-300 uppercase tracking-wider">
-                  Title <span className="text-pink-400">*</span>
+              {/* Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+                  Title <span style={{ color: '#ff0050' }}>*</span>
                 </label>
-                <div className="relative">
+                <div style={{ position: 'relative' }}>
                   <textarea
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={150}
                     rows={3}
                     placeholder="Add your caption here..."
-                    className="w-full px-4 py-3 bg-white/5 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-cyan-400 transition-all duration-300 resize-none text-white placeholder-gray-600 font-medium"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '2px solid #333',
+                      borderRadius: '12px',
+                      color: 'white',
+                      fontSize: '14px',
+                      fontFamily: 'inherit',
+                      resize: 'none',
+                      outline: 'none',
+                      transition: 'border-color 0.3s'
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#00f5ff'}
+                    onBlur={(e) => e.target.style.borderColor = '#333'}
                   />
-                  <div className="absolute bottom-3 right-3 text-xs font-mono">
-                    <span className={title.length > 140 ? 'text-pink-400' : 'text-gray-600'}>
-                      {title.length}
-                    </span>
-                    <span className="text-gray-700">/150</span>
+                  <div style={{ position: 'absolute', bottom: '12px', right: '12px', fontSize: '11px', fontFamily: 'monospace' }}>
+                    <span style={{ color: title.length > 140 ? '#ff0050' : '#666' }}>{title.length}</span>
+                    <span style={{ color: '#444' }}>/150</span>
                   </div>
                 </div>
               </div>
 
-              {/* Privacy Level */}
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-gray-300 uppercase tracking-wider">
-                  Who can view this video? <span className="text-pink-400">*</span>
+              {/* Privacy */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+                  Who can view this video? <span style={{ color: '#ff0050' }}>*</span>
                 </label>
                 <select
                   value={privacyLevel}
@@ -277,16 +435,26 @@ export default function TikTokPublishDrawer({
                       setBrandedContent(false);
                     }
                   }}
-                  className="w-full px-4 py-3 bg-white/5 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-cyan-400 transition-all duration-300 text-white appearance-none cursor-pointer"
                   style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2300F5FF' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`,
+                    width: '100%',
+                    padding: '12px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '2px solid #333',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%2300f5ff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 1rem center',
+                    backgroundPosition: 'right 16px center'
                   }}
                 >
-                  <option value="" disabled>Select privacy level</option>
+                  <option value="" disabled style={{ background: '#0d0d15' }}>Select privacy level</option>
                   {creatorInfo?.privacy_level_options.map((level) => (
-                    <option key={level} value={level} className="bg-[#0d0d15]">
+                    <option key={level} value={level} style={{ background: '#0d0d15' }}>
                       {level === 'PUBLIC_TO_EVERYONE' ? '🌍 Everyone' :
                        level === 'MUTUAL_FOLLOW_FRIENDS' ? '👥 Friends' :
                        level === 'SELF_ONLY' ? '🔒 Only me' :
@@ -296,50 +464,39 @@ export default function TikTokPublishDrawer({
                 </select>
               </div>
 
-              {/* Interaction Settings */}
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-gray-300 uppercase tracking-wider">Allow others to</label>
-                <div className="space-y-3 bg-white/5 border border-gray-800 rounded-xl p-4">
+              {/* Interactions */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
+                  Allow others to
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid #333', borderRadius: '12px', padding: '16px' }}>
                   {[
                     { id: 'comment', label: 'Comment', checked: allowComment, onChange: setAllowComment, disabled: creatorInfo?.comment_disabled },
                     { id: 'duet', label: 'Duet', checked: allowDuet, onChange: setAllowDuet, disabled: creatorInfo?.duet_disabled },
                     { id: 'stitch', label: 'Stitch', checked: allowStitch, onChange: setAllowStitch, disabled: creatorInfo?.stitch_disabled },
                   ].map((item) => (
-                    <label key={item.id} className={`flex items-center gap-3 cursor-pointer group ${item.disabled ? 'opacity-40' : ''}`}>
-                      <div className="relative">
-                        <input
-                          type="checkbox"
-                          checked={item.checked}
-                          onChange={(e) => item.onChange(e.target.checked)}
-                          disabled={item.disabled}
-                          className="sr-only"
-                        />
-                        <div className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center ${
-                          item.checked 
-                            ? 'bg-gradient-to-br from-cyan-400 to-pink-400 border-transparent' 
-                            : 'border-gray-700 group-hover:border-cyan-500'
-                        }`}>
-                          {item.checked && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                              <path d="M5 13l4 4L19 7"/>
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-white font-medium">{item.label}</span>
+                    <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: item.disabled ? 'not-allowed' : 'pointer', opacity: item.disabled ? 0.4 : 1 }}>
+                      <input
+                        type="checkbox"
+                        checked={item.checked}
+                        onChange={(e) => item.onChange(e.target.checked)}
+                        disabled={item.disabled}
+                        style={{ width: '20px', height: '20px', accentColor: '#00f5ff', cursor: item.disabled ? 'not-allowed' : 'pointer' }}
+                      />
+                      <span style={{ color: 'white', fontWeight: '500' }}>{item.label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               {/* Commercial Content */}
-              <div className="space-y-4 border-t-2 border-gray-800 pt-6">
-                <label className="flex items-center justify-between cursor-pointer group">
-                  <div className="flex-1">
-                    <div className="text-base font-bold text-white group-hover:text-cyan-400 transition-colors">
+              <div style={{ borderTop: '2px solid #333', paddingTop: '24px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: 'white', marginBottom: '4px' }}>
                       Disclose commercial content
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
+                    <div style={{ fontSize: '13px', color: '#888' }}>
                       Turn on if promoting yourself, a brand, or product
                     </div>
                   </div>
@@ -352,53 +509,56 @@ export default function TikTokPublishDrawer({
                         setBrandedContent(false);
                       }
                     }}
-                    className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
-                      commercialEnabled 
-                        ? 'bg-gradient-to-r from-cyan-400 to-pink-400' 
-                        : 'bg-gray-700'
-                    }`}
+                    style={{
+                      position: 'relative',
+                      width: '56px',
+                      height: '28px',
+                      borderRadius: '14px',
+                      background: commercialEnabled ? 'linear-gradient(to right, #00f5ff, #ff0050)' : '#444',
+                      transition: 'all 0.3s'
+                    }}
                   >
-                    <div 
-                      className={`absolute top-0.5 w-6 h-6 bg-white rounded-full transition-all duration-300 shadow-lg ${
-                        commercialEnabled ? 'translate-x-7' : 'translate-x-0.5'
-                      }`}
-                    />
+                    <div style={{
+                      position: 'absolute',
+                      top: '2px',
+                      left: commercialEnabled ? '30px' : '2px',
+                      width: '24px',
+                      height: '24px',
+                      background: 'white',
+                      borderRadius: '12px',
+                      transition: 'all 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                    }}/>
                   </div>
                 </label>
 
                 {commercialEnabled && (
-                  <div className="space-y-3 ml-2 pl-4 border-l-2 border-cyan-500/30">
+                  <div style={{ marginTop: '16px', marginLeft: '8px', paddingLeft: '16px', borderLeft: '2px solid rgba(0, 245, 255, 0.3)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {[
                       { id: 'yourBrand', label: 'Your brand', checked: yourBrand, onChange: setYourBrand, disabled: false },
                       { id: 'branded', label: 'Branded content', checked: brandedContent, onChange: setBrandedContent, disabled: !isBrandedContentAllowed() },
                     ].map((item) => (
-                      <label key={item.id} className={`flex items-center gap-3 cursor-pointer group ${item.disabled ? 'opacity-40' : ''}`}>
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={item.checked}
-                            onChange={(e) => item.onChange(e.target.checked)}
-                            disabled={item.disabled}
-                            className="sr-only"
-                          />
-                          <div className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center ${
-                            item.checked 
-                              ? 'bg-gradient-to-br from-cyan-400 to-pink-400 border-transparent' 
-                              : 'border-gray-700 group-hover:border-cyan-500'
-                          }`}>
-                            {item.checked && (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                                <path d="M5 13l4 4L19 7"/>
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-white font-medium">{item.label}</span>
+                      <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: item.disabled ? 'not-allowed' : 'pointer', opacity: item.disabled ? 0.4 : 1 }}>
+                        <input
+                          type="checkbox"
+                          checked={item.checked}
+                          onChange={(e) => item.onChange(e.target.checked)}
+                          disabled={item.disabled}
+                          style={{ width: '20px', height: '20px', accentColor: '#00f5ff', cursor: item.disabled ? 'not-allowed' : 'pointer' }}
+                        />
+                        <span style={{ color: 'white', fontWeight: '500' }}>{item.label}</span>
                       </label>
                     ))}
 
                     {getCommercialLabel() && (
-                      <div className="text-sm bg-gradient-to-r from-cyan-500/10 to-pink-500/10 border border-cyan-500/30 p-3 rounded-xl text-cyan-300">
+                      <div style={{
+                        fontSize: '13px',
+                        background: 'linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(255, 0, 80, 0.1))',
+                        border: '1px solid rgba(0, 245, 255, 0.3)',
+                        padding: '12px',
+                        borderRadius: '12px',
+                        color: '#00f5ff'
+                      }}>
                         ℹ️ {getCommercialLabel()}
                       </div>
                     )}
@@ -407,59 +567,99 @@ export default function TikTokPublishDrawer({
               </div>
 
               {/* Consent */}
-              <div className="bg-gradient-to-br from-cyan-500/5 to-pink-500/5 border border-cyan-500/20 p-4 rounded-xl">
-                <label className="flex items-start gap-3 cursor-pointer group">
-                  <div className="relative mt-0.5">
-                    <input
-                      type="checkbox"
-                      checked={hasConsented}
-                      onChange={(e) => setHasConsented(e.target.checked)}
-                      className="sr-only"
-                    />
-                    <div className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center ${
-                      hasConsented 
-                        ? 'bg-gradient-to-br from-cyan-400 to-pink-400 border-transparent' 
-                        : 'border-gray-700 group-hover:border-cyan-500'
-                    }`}>
-                      {hasConsented && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                          <path d="M5 13l4 4L19 7"/>
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-300 leading-relaxed">{getConsentText()}</span>
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(0, 245, 255, 0.05), rgba(255, 0, 80, 0.05))',
+                border: '1px solid rgba(0, 245, 255, 0.2)',
+                padding: '16px',
+                borderRadius: '12px'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={hasConsented}
+                    onChange={(e) => setHasConsented(e.target.checked)}
+                    style={{ width: '20px', height: '20px', accentColor: '#00f5ff', cursor: 'pointer', marginTop: '2px', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: '13px', color: '#ccc', lineHeight: '1.5' }}>{getConsentText()}</span>
                 </label>
               </div>
 
-              {/* Processing Notice */}
-              <div className="flex items-start gap-3 text-xs text-gray-500 bg-white/5 p-3 rounded-xl border border-gray-800">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="flex-shrink-0 mt-0.5">
-                  <circle cx="12" cy="12" r="10" strokeWidth="2"/>
-                  <path d="M12 8v4M12 16h.01" strokeWidth="2" strokeLinecap="round"/>
+              {/* Notice */}
+              <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: '#888', background: 'rgba(255, 255, 255, 0.05)', padding: '12px', borderRadius: '12px', border: '1px solid #333' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: '2px' }}>
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 8v4M12 16h.01" strokeLinecap="round"/>
                 </svg>
-                <p>After publishing, it may take a few minutes for your content to process and be visible on your profile.</p>
+                <p style={{ margin: 0, lineHeight: '1.5' }}>After publishing, it may take a few minutes for your content to process and be visible on your profile.</p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="sticky bottom-0 bg-gradient-to-t from-[#050509] via-[#050509] to-transparent pt-6 pb-2 -mx-6 px-6 flex gap-3">
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '12px', position: 'sticky', bottom: '-24px', background: 'linear-gradient(to bottom, transparent, #050509 20%)', paddingTop: '24px', marginLeft: '-24px', marginRight: '-24px', paddingLeft: '24px', paddingRight: '24px', paddingBottom: '8px' }}>
                 <button
                   onClick={onClose}
-                  className="flex-1 px-6 py-4 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all duration-300 border border-gray-800 hover:border-gray-700"
+                  style={{
+                    flex: 1,
+                    padding: '16px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid #333',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.borderColor = '#555';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.borderColor = '#333';
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handlePublish}
                   disabled={!canPublish() || publishing}
-                  className={`flex-1 px-6 py-4 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
-                    canPublish() && !publishing
-                      ? 'bg-gradient-to-r from-cyan-400 to-pink-400 hover:shadow-lg hover:shadow-cyan-500/50 hover:scale-[1.02]'
-                      : 'bg-gray-800 opacity-40 cursor-not-allowed'
-                  }`}
+                  style={{
+                    flex: 1,
+                    padding: '16px',
+                    background: canPublish() && !publishing ? 'linear-gradient(to right, #00f5ff, #ff0050)' : '#333',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: canPublish() && !publishing ? 'pointer' : 'not-allowed',
+                    opacity: canPublish() && !publishing ? 1 : 0.4,
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseOver={(e) => {
+                    if (canPublish() && !publishing) {
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 245, 255, 0.5)';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 >
                   {publishing && (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      border: '2px solid rgba(255, 255, 255, 0.3)',
+                      borderTopColor: 'white',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}/>
                   )}
                   {publishing ? 'Publishing...' : 'Post to TikTok'}
                 </button>
