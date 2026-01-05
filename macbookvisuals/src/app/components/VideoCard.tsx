@@ -5,203 +5,226 @@ import type { Video } from "../types";
 
 interface VideoCardProps {
   video: Video;
-  onSave: (video: Video) => void;
-  onPublish: (id: string) => void;
-  onDelete: (id: string) => void;
+  onSave: (updated: Video) => void;
+  onPublish: (videoId: string) => void;
+  onPublishYouTube: (videoId: string) => void;
+  onPublishBoth: (videoId: string) => void;
+  onDelete: (videoId: string) => void;
 }
 
-export default function VideoCard({ video, onSave, onPublish, onDelete }: VideoCardProps) {
+export default function VideoCard({
+  video,
+  onSave,
+  onPublish,
+  onPublishYouTube,
+  onPublishBoth,
+  onDelete,
+}: VideoCardProps) {
+  const [editing, setEditing] = useState(false);
   const [caption, setCaption] = useState(video.tiktok.caption);
   const [scheduledAt, setScheduledAt] = useState(video.scheduledAt || "");
-  const [videoError, setVideoError] = useState(false);
 
   const handleSave = () => {
-    const updated: Video = {
+    const updated = {
       ...video,
-      scheduledAt: scheduledAt || undefined,
-      tiktok: {
-        ...video.tiktok,
-        caption: caption,
-      },
-      youtube: {
-        ...video.youtube,
-        description: caption,
-      },
+      tiktok: { ...video.tiktok, caption },
+      scheduledAt,
     };
     onSave(updated);
+    setEditing(false);
   };
 
-  const isPublished = video.status === "published";
-  const isPartialSuccess = 
-    (video.tiktok.status === "published" && video.youtube.status === "failed") ||
-    (video.youtube.status === "published" && video.tiktok.status === "failed");
+  const tiktokPublished = video.tiktok.status === "published";
+  const youtubePublished = video.youtube.status === "published";
+  const bothPublished = tiktokPublished && youtubePublished;
 
   return (
     <div className="card video-card">
       {/* Video Preview */}
       <div className="video-thumb">
-        {!videoError ? (
-          <video 
-            controls 
-            style={{ width: '100%', maxHeight: '240px' }}
-            onError={() => setVideoError(true)}
-          >
-            <source src={encodeURI(video.url)} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        ) : (
-          <div style={{
-            width: '100%',
-            height: '200px',
-            background: '#000',
-            display: 'flex',
-            alignItems: 'center',
+        <video 
+          src={encodeURI(video.url)} 
+          controls 
+          style={{ width: "100%", maxHeight: "300px" }}
+          onError={(e) => {
+            console.error('Video load error:', video.url);
+            e.currentTarget.style.display = 'none';
+            const fallback = e.currentTarget.parentElement?.querySelector('.video-error');
+            if (fallback) (fallback as HTMLElement).style.display = 'flex';
+          }}
+        />
+        <div 
+          className="video-error" 
+          style={{ 
+            display: 'none', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
             justifyContent: 'center',
-            borderRadius: '8px'
-          }}>
-            <div style={{ textAlign: 'center', color: '#666' }}>
-              <div style={{ fontSize: '48px', marginBottom: '10px' }}>🎥</div>
-              <div style={{ fontSize: '14px' }}>Video preview unavailable</div>
-              <div style={{ fontSize: '12px', marginTop: '5px', opacity: 0.7 }}>
-                {video.filename}
-              </div>
-            </div>
-          </div>
-        )}
+            minHeight: '200px',
+            background: '#111',
+            borderRadius: '12px',
+            gap: '12px'
+          }}
+        >
+          <div style={{ fontSize: '48px' }}>🎥</div>
+          <div style={{ fontSize: '14px', color: '#888' }}>Video preview unavailable</div>
+        </div>
       </div>
 
       {/* Filename & Status */}
       <div className="video-meta">
         <p className="video-filename">{video.filename}</p>
-        <span className={`status status-${video.status}`}>
-          {video.status}
-        </span>
+        <span className={`status status-${video.status}`}>{video.status}</span>
       </div>
 
       {/* Platform Status */}
-      {(video.tiktok.status || video.youtube.status) && (
-        <div style={{ marginTop: '12px', fontSize: '13px', padding: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px' }}>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', alignItems: 'center' }}>
-            <span style={{ 
-              color: video.tiktok.status === 'published' ? '#8bff9c' : 
-                     video.tiktok.status === 'failed' ? '#ff6b81' : '#888'
-            }}>
-              {video.tiktok.status === 'published' ? '✓' : 
-               video.tiktok.status === 'failed' ? '✗' : '○'} TikTok
-            </span>
-            {video.tiktok.videoId && (
-              <span style={{ fontSize: '11px', color: '#666' }}>
-                ({video.tiktok.videoId.substring(0, 8)}...)
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ 
-              color: video.youtube.status === 'published' ? '#8bff9c' : 
-                     video.youtube.status === 'failed' ? '#ff6b81' : '#888'
-            }}>
-              {video.youtube.status === 'published' ? '✓' : 
-               video.youtube.status === 'failed' ? '✗' : '○'} YouTube
-            </span>
-            {video.youtube.videoId && (
-              <span style={{ fontSize: '11px', color: '#666' }}>
-                ({video.youtube.videoId})
-              </span>
-            )}
-          </div>
-          
-          {/* Error messages */}
-          {video.tiktok.error && (
-            <div style={{ 
-              marginTop: '8px', 
-              padding: '6px 8px', 
-              background: 'rgba(255, 107, 129, 0.1)', 
-              borderRadius: '4px',
-              fontSize: '11px',
-              color: '#ff6b81'
-            }}>
-              TikTok: {video.tiktok.error}
-            </div>
-          )}
-          {video.youtube.error && (
-            <div style={{ 
-              marginTop: '8px', 
-              padding: '6px 8px', 
-              background: 'rgba(255, 107, 129, 0.1)', 
-              borderRadius: '4px',
-              fontSize: '11px',
-              color: '#ff6b81'
-            }}>
-              YouTube: {video.youtube.error}
-            </div>
-          )}
+      <div style={{ display: 'flex', gap: '8px', fontSize: '13px', marginTop: '8px' }}>
+        <span style={{ 
+          padding: '4px 8px', 
+          borderRadius: '6px', 
+          background: tiktokPublished ? '#12351a' : '#333',
+          color: tiktokPublished ? '#8bff9c' : '#888'
+        }}>
+          {tiktokPublished ? '✓' : '○'} TikTok
+        </span>
+        <span style={{ 
+          padding: '4px 8px', 
+          borderRadius: '6px', 
+          background: youtubePublished ? '#12351a' : '#333',
+          color: youtubePublished ? '#8bff9c' : '#888'
+        }}>
+          {youtubePublished ? '✓' : '○'} YouTube
+        </span>
+      </div>
+
+      {/* Error Messages */}
+      {video.tiktok.error && (
+        <div style={{ fontSize: '12px', color: '#ff6b81', marginTop: '8px' }}>
+          TikTok: {video.tiktok.error}
+        </div>
+      )}
+      {video.youtube.error && (
+        <div style={{ fontSize: '12px', color: '#ff6b81', marginTop: '8px' }}>
+          YouTube: {video.youtube.error}
         </div>
       )}
 
-      {/* Caption */}
-      <div className="field">
-        <span>Caption</span>
-        <textarea
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          disabled={isPublished}
-          rows={3}
-        />
-      </div>
+      {/* Edit Mode */}
+      {editing ? (
+        <div>
+          <div className="field">
+            <span>Caption</span>
+            <textarea
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={3}
+            />
+          </div>
 
-      {/* Schedule */}
-      <div className="field">
-        <span>Schedule (optional)</span>
-        <input
-          type="datetime-local"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-          disabled={isPublished}
-        />
-      </div>
+          <div className="field">
+            <span>Schedule (optional)</span>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+            />
+          </div>
 
-      {/* Buttons */}
-      <div className="video-actions">
-        {!isPublished && (
-          <>
-            <button onClick={handleSave} className="btn primary">
+          <div className="video-actions">
+            <button className="btn primary" onClick={handleSave}>
               Save
             </button>
-            <button onClick={() => onPublish(video.id)} className="btn primary">
-              Publish now
+            <button className="btn outline" onClick={() => setEditing(false)}>
+              Cancel
             </button>
-          </>
-        )}
-        
-        {/* Delete button for failures */}
-        {(video.status === 'failed' || isPartialSuccess) && (
-          <button 
-            onClick={() => {
-              if (confirm(`Delete "${video.filename}"?\n\n${
-                isPartialSuccess 
-                  ? 'Note: This video was published to one platform but failed on the other.' 
-                  : 'This video failed to publish.'
-              }`)) {
-                onDelete(video.id);
-              }
-            }}
-            className="btn outline"
-          >
-            Delete
-          </button>
-        )}
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* Caption Display */}
+          <div className="field">
+            <span>Caption</span>
+            <p style={{ 
+              margin: '4px 0 0', 
+              fontSize: '13px', 
+              color: '#ccc',
+              whiteSpace: 'pre-wrap'
+            }}>
+              {caption}
+            </p>
+          </div>
 
-        {/* Retry button */}
-        {isPartialSuccess && (
-          <button 
-            onClick={() => onPublish(video.id)} 
-            className="btn primary"
-            title="Retry publishing to failed platform"
-          >
-            Retry Failed
-          </button>
-        )}
-      </div>
+          {/* Action Buttons */}
+          <div className="video-actions" style={{ flexDirection: 'column', gap: '8px' }}>
+            {!bothPublished && (
+              <>
+                {/* TikTok Button - Opens Compliance Drawer */}
+                {!tiktokPublished && (
+                  <button 
+                    className="btn primary" 
+                    onClick={() => onPublish(video.id)}
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(to right, #00f5ff, #ff0050)',
+                      border: 'none'
+                    }}
+                  >
+                    📱 Post to TikTok (Compliant)
+                  </button>
+                )}
+
+                {/* YouTube Button */}
+                {!youtubePublished && (
+                  <button 
+                    className="btn primary" 
+                    onClick={() => onPublishYouTube(video.id)}
+                    style={{
+                      width: '100%',
+                      background: '#FF0000',
+                      border: 'none'
+                    }}
+                  >
+                    📺 Publish to YouTube
+                  </button>
+                )}
+
+                {/* Publish Both Button */}
+                {!tiktokPublished && !youtubePublished && (
+                  <button 
+                    className="btn primary" 
+                    onClick={() => onPublishBoth(video.id)}
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(to right, #6366f1, #8b5cf6)',
+                      border: 'none'
+                    }}
+                  >
+                    🚀 Publish Both (YouTube + TikTok Draft)
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Edit & Delete */}
+            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+              <button 
+                className="btn outline" 
+                onClick={() => setEditing(true)}
+                style={{ flex: 1 }}
+              >
+                Edit
+              </button>
+              <button 
+                className="btn outline" 
+                onClick={() => onDelete(video.id)}
+                style={{ flex: 1 }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

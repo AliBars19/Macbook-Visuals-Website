@@ -94,7 +94,8 @@ export default function Dashboard() {
     setVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
 
-  const handlePublishClick = (videoId: string) => {
+  // TikTok Compliant Publish - Opens Drawer
+  const handleTikTokPublishClick = (videoId: string) => {
     const video = videos.find(v => v.id === videoId);
     if (video) {
       setSelectedVideo(video);
@@ -102,7 +103,113 @@ export default function Dashboard() {
     }
   };
 
-  const handleTikTokPublish = async (publishData: TikTokPublishData) => {
+  // YouTube Only Publish
+  const handleYouTubePublish = async (videoId: string) => {
+    try {
+      const res = await fetch(`/api/videos/${videoId}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: 'youtube',
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to publish to YouTube');
+      }
+
+      const data = await res.json();
+
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.id === videoId 
+            ? { 
+                ...v, 
+                status: data.video.status,
+                youtube: data.video.youtube
+              } 
+            : v
+        )
+      );
+
+      if (data.results?.youtube?.success) {
+        alert('✓ Published to YouTube successfully!');
+      } else {
+        alert('✗ Failed to publish to YouTube.\n\n' + (data.results?.youtube?.error || 'Unknown error'));
+      }
+
+    } catch (error) {
+      console.error('YouTube publish error:', error);
+      alert('Error publishing to YouTube');
+    }
+  };
+
+  // Publish Both - YouTube + TikTok Draft
+  const handlePublishBoth = async (videoId: string) => {
+    try {
+      const video = videos.find(v => v.id === videoId);
+      if (!video) return;
+
+      const res = await fetch(`/api/videos/${videoId}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform: 'both',
+          publishData: {
+            videoId: videoId,
+            title: video.tiktok.caption,
+            privacyLevel: 'SELF_ONLY', // Upload as draft
+            disableComment: false,
+            disableDuet: false,
+            disableStitch: false,
+            commercialContent: {
+              enabled: false,
+              yourBrand: false,
+              brandedContent: false,
+            },
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to publish');
+      }
+
+      const data = await res.json();
+
+      if (data.cleaned) {
+        // Both succeeded - video deleted
+        setVideos((prev) => prev.filter((v) => v.id === videoId));
+        alert('✓ Published to both platforms!\n\n✓ YouTube: Live\n✓ TikTok: Uploaded to drafts\n\nVideo removed from server.');
+      } else {
+        // Update status
+        setVideos((prev) =>
+          prev.map((v) =>
+            v.id === videoId 
+              ? { 
+                  ...v, 
+                  status: data.video.status,
+                  tiktok: data.video.tiktok,
+                  youtube: data.video.youtube
+                } 
+              : v
+          )
+        );
+
+        const tiktokStatus = data.results?.tiktok?.success ? '✓ TikTok: Uploaded to drafts' : '✗ TikTok: Failed';
+        const youtubeStatus = data.results?.youtube?.success ? '✓ YouTube: Published' : '✗ YouTube: Failed';
+        
+        alert(`Publishing complete!\n\n${youtubeStatus}\n${tiktokStatus}`);
+      }
+
+    } catch (error) {
+      console.error('Publish error:', error);
+      alert('Error publishing video');
+    }
+  };
+
+  // TikTok Compliant Publish from Drawer
+  const handleTikTokCompliantPublish = async (publishData: TikTokPublishData) => {
     try {
       const res = await fetch(`/api/videos/${publishData.videoId}/publish`, {
         method: 'POST',
@@ -119,36 +226,27 @@ export default function Dashboard() {
 
       const data = await res.json();
 
-      // Check if video was cleaned up (deleted)
-      if (data.cleaned) {
-        console.log('✓ Video published and removed from server');
-        setVideos((prev) => prev.filter((v) => v.id === publishData.videoId));
-        alert(`✓ Published successfully to TikTok!\n\nVideo has been removed from server.`);
-      } else {
-        // Video still exists (partial failure or kept)
-        setVideos((prev) =>
-          prev.map((v) =>
-            v.id === publishData.videoId 
-              ? { 
-                  ...v, 
-                  status: data.video.status,
-                  tiktok: data.video.tiktok,
-                  youtube: data.video.youtube
-                } 
-              : v
-          )
-        );
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.id === publishData.videoId 
+            ? { 
+                ...v, 
+                status: data.video.status,
+                tiktok: data.video.tiktok
+              } 
+            : v
+        )
+      );
 
-        if (data.results?.tiktok?.success) {
-          alert('✓ Published to TikTok successfully!');
-        } else {
-          alert('✗ Failed to publish to TikTok.\n\nCheck console for errors.');
-        }
+      if (data.results?.tiktok?.success) {
+        alert('✓ Published to TikTok successfully!');
+      } else {
+        alert('✗ Failed to publish to TikTok.\n\n' + (data.results?.tiktok?.error || 'Check console for errors'));
       }
 
     } catch (error) {
-      console.error('Publish error:', error);
-      alert('Error publishing video');
+      console.error('TikTok publish error:', error);
+      alert('Error publishing to TikTok');
     }
   };
 
@@ -190,7 +288,9 @@ export default function Dashboard() {
               key={video.id}
               video={video}
               onSave={handleSave}
-              onPublish={handlePublishClick}
+              onPublish={handleTikTokPublishClick}
+              onPublishYouTube={handleYouTubePublish}
+              onPublishBoth={handlePublishBoth}
               onDelete={handleDelete}
             />
           ))}
@@ -206,7 +306,7 @@ export default function Dashboard() {
             setPublishDrawerOpen(false);
             setSelectedVideo(null);
           }}
-          onPublish={handleTikTokPublish}
+          onPublish={handleTikTokCompliantPublish}
         />,
         document.body
       )}
