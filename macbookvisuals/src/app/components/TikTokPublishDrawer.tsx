@@ -83,9 +83,31 @@ export default function TikTokPublishDrawer({
       
       if (data.ok) {
         setCreatorInfo(data.creatorInfo);
+      } else {
+        console.error('Creator info API error:', data.error);
+        // Fallback to default options
+        setCreatorInfo({
+          creator_username: 'MacbookVisuals',
+          creator_avatar_url: '',
+          privacy_level_options: ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'],
+          comment_disabled: false,
+          duet_disabled: false,
+          stitch_disabled: false,
+          max_video_post_duration_sec: 600,
+        });
       }
     } catch (error) {
       console.error('Creator info error:', error);
+      // Fallback to default options
+      setCreatorInfo({
+        creator_username: 'MacbookVisuals',
+        creator_avatar_url: '',
+        privacy_level_options: ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'],
+        comment_disabled: false,
+        duet_disabled: false,
+        stitch_disabled: false,
+        max_video_post_duration_sec: 600,
+      });
     } finally {
       setLoading(false);
     }
