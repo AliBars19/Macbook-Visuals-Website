@@ -40,12 +40,20 @@ export default function TikTokPublishDrawer({
   onClose,
   onPublish
 }: TikTokPublishDrawerProps) {
-  const [creatorInfo, setCreatorInfo] = useState<CreatorInfo | null>(null);
+  const [creatorInfo, setCreatorInfo] = useState<CreatorInfo>({
+    creator_username: 'MacbookVisuals',
+    creator_avatar_url: '',
+    privacy_level_options: ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'],
+    comment_disabled: false,
+    duet_disabled: false,
+    stitch_disabled: false,
+    max_video_post_duration_sec: 600,
+  });
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   
   const [title, setTitle] = useState('');
-  const [privacyLevel, setPrivacyLevel] = useState('');
+  const [privacyLevel, setPrivacyLevel] = useState('SELF_ONLY'); // Default to private
   const [allowComment, setAllowComment] = useState(false);
   const [allowDuet, setAllowDuet] = useState(false);
   const [allowStitch, setAllowStitch] = useState(false);
@@ -58,7 +66,6 @@ export default function TikTokPublishDrawer({
     if (isOpen && video) {
       loadCreatorInfo();
       setTitle(video.tiktok.caption);
-      // Prevent body scroll when drawer is open
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -84,34 +91,14 @@ export default function TikTokPublishDrawer({
       
       console.log('Creator info response:', data);
       
-      if (data.ok) {
-        console.log('✓ Creator info loaded:', data.creatorInfo);
+      if (data.ok && data.creatorInfo) {
+        console.log('✓ Creator info loaded from API');
         setCreatorInfo(data.creatorInfo);
       } else {
-        console.warn('Creator info API failed, using fallback:', data.error);
-        // Fallback to default options
-        setCreatorInfo({
-          creator_username: 'MacbookVisuals',
-          creator_avatar_url: '',
-          privacy_level_options: ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'],
-          comment_disabled: false,
-          duet_disabled: false,
-          stitch_disabled: false,
-          max_video_post_duration_sec: 600,
-        });
+        console.log('Using fallback creator info');
       }
     } catch (error) {
       console.error('Creator info error, using fallback:', error);
-      // Fallback to default options
-      setCreatorInfo({
-        creator_username: 'MacbookVisuals',
-        creator_avatar_url: '',
-        privacy_level_options: ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'SELF_ONLY'],
-        comment_disabled: false,
-        duet_disabled: false,
-        stitch_disabled: false,
-        max_video_post_duration_sec: 600,
-      });
     } finally {
       setLoading(false);
     }
@@ -119,7 +106,7 @@ export default function TikTokPublishDrawer({
 
   const resetForm = () => {
     setTitle('');
-    setPrivacyLevel('');
+    setPrivacyLevel('SELF_ONLY');
     setAllowComment(false);
     setAllowDuet(false);
     setAllowStitch(false);
@@ -130,14 +117,14 @@ export default function TikTokPublishDrawer({
   };
 
   const handlePublish = async () => {
-    if (!video || !canPublish()) return;
+    if (!video || !title.trim()) return;
 
     setPublishing(true);
     try {
       await onPublish({
         videoId: video.id,
         title,
-        privacyLevel: privacyLevel || 'SELF_ONLY', // Default to private if none selected
+        privacyLevel: privacyLevel || 'SELF_ONLY',
         disableComment: !allowComment,
         disableDuet: !allowDuet,
         disableStitch: !allowStitch,
@@ -157,11 +144,7 @@ export default function TikTokPublishDrawer({
   };
 
   const canPublish = () => {
-    // Temporarily relaxed for pre-audit testing
-    if (!title.trim()) return false;
-    // Privacy can be empty - will default to SELF_ONLY
-    // Consent not required for draft uploads
-    return true;
+    return title.trim().length > 0;
   };
 
   const getConsentText = () => {
@@ -290,7 +273,7 @@ export default function TikTokPublishDrawer({
               }}>
                 Post to TikTok
               </h2>
-              <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Direct Post API</p>
+              <p style={{ margin: 0, fontSize: '11px', color: '#666', fontWeight: '500' }}>Pre-Audit Mode</p>
             </div>
           </div>
           <button
@@ -329,67 +312,54 @@ export default function TikTokPublishDrawer({
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite'
                 }}/>
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '64px',
-                  height: '64px',
-                  border: '4px solid rgba(255, 0, 80, 0.2)',
-                  borderBottomColor: '#ff0050',
-                  borderRadius: '50%',
-                  animation: 'spin 1.5s linear infinite reverse'
-                }}/>
               </div>
-              <p style={{ color: '#888', animation: 'pulse 2s ease-in-out infinite' }}>Loading creator info...</p>
+              <p style={{ color: '#888', animation: 'pulse 2s ease-in-out infinite' }}>Loading...</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Creator Info */}
-              {creatorInfo && (
-                <div style={{
-                  position: 'relative',
-                  overflow: 'hidden',
-                  borderRadius: '16px',
-                  background: 'linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(255, 0, 80, 0.1))',
-                  padding: '16px',
-                  border: '1px solid rgba(0, 245, 255, 0.2)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(255, 0, 80, 0.1))',
+                padding: '16px',
+                border: '1px solid rgba(0, 245, 255, 0.2)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '16px',
+                    background: 'linear-gradient(135deg, #00f5ff, #ff0050)',
+                    padding: '2px'
+                  }}>
                     <div style={{
-                      width: '56px',
-                      height: '56px',
-                      borderRadius: '16px',
-                      background: 'linear-gradient(135deg, #00f5ff, #ff0050)',
-                      padding: '2px'
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '14px',
+                      background: '#0d0d15',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}>
-                      <div style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: '14px',
-                        background: '#0d0d15',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                      <span style={{
+                        fontSize: '24px',
+                        fontWeight: '900',
+                        background: 'linear-gradient(135deg, #00f5ff, #ff0050)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
                       }}>
-                        <span style={{
-                          fontSize: '24px',
-                          fontWeight: '900',
-                          background: 'linear-gradient(135deg, #00f5ff, #ff0050)',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }}>
-                          {creatorInfo.creator_username[0].toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#888', fontWeight: '500' }}>Posting as</p>
-                      <p style={{ margin: 0, fontSize: '18px', color: 'white', fontWeight: '700' }}>@{creatorInfo.creator_username}</p>
+                        {creatorInfo.creator_username[0].toUpperCase()}
+                      </span>
                     </div>
                   </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#888', fontWeight: '500' }}>Posting as</p>
+                    <p style={{ margin: 0, fontSize: '18px', color: 'white', fontWeight: '700' }}>@{creatorInfo.creator_username}</p>
+                  </div>
                 </div>
-              )}
+              </div>
 
               {/* Video Preview */}
               <div>
@@ -400,14 +370,12 @@ export default function TikTokPublishDrawer({
                   borderRadius: '16px',
                   overflow: 'hidden',
                   border: '2px solid #333',
-                  transition: 'border-color 0.3s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.borderColor = '#00f5ff'}
-                onMouseOut={(e) => e.currentTarget.style.borderColor = '#333'}>
+                  background: '#000'
+                }}>
                   <video 
-                    src={encodeURI(video.url)}
+                    src={video.url}
                     controls
-                    style={{ width: '100%', display: 'block', aspectRatio: '16/9', background: '#000' }}
+                    style={{ width: '100%', display: 'block', aspectRatio: '16/9' }}
                   />
                 </div>
                 <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#666', fontFamily: 'monospace' }}>{video.filename}</p>
@@ -436,7 +404,8 @@ export default function TikTokPublishDrawer({
                       fontFamily: 'inherit',
                       resize: 'none',
                       outline: 'none',
-                      transition: 'border-color 0.3s'
+                      transition: 'border-color 0.3s',
+                      boxSizing: 'border-box'
                     }}
                     onFocus={(e) => e.target.style.borderColor = '#00f5ff'}
                     onBlur={(e) => e.target.style.borderColor = '#333'}
@@ -451,11 +420,12 @@ export default function TikTokPublishDrawer({
               {/* Privacy */}
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>
-                  Who can view this video? <span style={{ color: '#ff0050' }}>*</span>
+                  Who can view this video?
                 </label>
                 <select
                   value={privacyLevel}
                   onChange={(e) => {
+                    console.log('Privacy changed to:', e.target.value);
                     setPrivacyLevel(e.target.value);
                     if (e.target.value === 'SELF_ONLY' && brandedContent) {
                       setBrandedContent(false);
@@ -463,7 +433,7 @@ export default function TikTokPublishDrawer({
                   }}
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '12px 40px 12px 12px',
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '2px solid #333',
                     borderRadius: '12px',
@@ -478,16 +448,13 @@ export default function TikTokPublishDrawer({
                     backgroundPosition: 'right 16px center'
                   }}
                 >
-                  <option value="" disabled style={{ background: '#0d0d15' }}>Select privacy level</option>
-                  {creatorInfo?.privacy_level_options.map((level) => (
-                    <option key={level} value={level} style={{ background: '#0d0d15' }}>
-                      {level === 'PUBLIC_TO_EVERYONE' ? '🌍 Everyone' :
-                       level === 'MUTUAL_FOLLOW_FRIENDS' ? '👥 Friends' :
-                       level === 'SELF_ONLY' ? '🔒 Only me' :
-                       level}
-                    </option>
-                  ))}
+                  <option value="PUBLIC_TO_EVERYONE" style={{ background: '#0d0d15', color: 'white' }}>🌍 Everyone</option>
+                  <option value="MUTUAL_FOLLOW_FRIENDS" style={{ background: '#0d0d15', color: 'white' }}>👥 Friends</option>
+                  <option value="SELF_ONLY" style={{ background: '#0d0d15', color: 'white' }}>🔒 Only me (Draft)</option>
                 </select>
+                <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#888' }}>
+                  💡 Tip: Pre-audit mode defaults to "Only me" (draft). You can change privacy in TikTok app after upload.
+                </p>
               </div>
 
               {/* Interactions */}
