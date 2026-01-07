@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Video } from "../types";
 
 interface VideoCardProps {
@@ -23,6 +23,17 @@ export default function VideoCard({
   const [editing, setEditing] = useState(false);
   const [caption, setCaption] = useState(video.tiktok.caption);
   const [scheduledAt, setScheduledAt] = useState(video.scheduledAt || "");
+  const [videoError, setVideoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Debug logging
+    console.log('=== VIDEO DEBUG INFO ===');
+    console.log('Raw URL:', video.url);
+    console.log('Encoded URL:', encodeURI(video.url));
+    console.log('Manual encode:', video.url.replace(/ /g, '%20'));
+    console.log('Filename:', video.filename);
+    console.log('========================');
+  }, [video]);
 
   const handleSave = () => {
     const updated = {
@@ -38,19 +49,53 @@ export default function VideoCard({
   const youtubePublished = video.youtube.status === "published";
   const bothPublished = tiktokPublished && youtubePublished;
 
+  // Use API route to stream video
+  const videoSrc = `/api/videos/stream/${encodeURIComponent(video.filename)}`;
+  const altSrc = video.url.replace(/ /g, '%20');
+
   return (
     <div className="card video-card">
-      {/* Video Preview */}
+      {/* Video Preview with Debug Info */}
       <div className="video-thumb">
         <video 
-          src={video.url.replace(/ /g, '%20')} 
+          src={videoSrc}
           controls
           preload="metadata"
           style={{ width: "100%", maxHeight: "300px" }}
+          onLoadStart={() => console.log('Video loading started')}
+          onLoadedMetadata={() => console.log('Video metadata loaded')}
+          onCanPlay={() => console.log('Video can play')}
           onError={(e) => {
-            console.error('Video load error:', video.url);
+            const error = (e.target as HTMLVideoElement).error;
+            const errorMsg = error ? 
+              `Error Code: ${error.code}, Message: ${error.message}` : 
+              'Unknown error';
+            console.error('=== VIDEO LOAD ERROR ===');
+            console.error('Error:', errorMsg);
+            console.error('Tried URL:', videoSrc);
+            console.error('Alt URL:', altSrc);
+            console.error('========================');
+            setVideoError(errorMsg);
           }}
         />
+        {videoError && (
+          <div style={{
+            padding: '12px',
+            background: '#ff0050',
+            color: 'white',
+            fontSize: '11px',
+            borderRadius: '8px',
+            marginTop: '8px',
+            fontFamily: 'monospace'
+          }}>
+            <strong>Video Load Error:</strong><br/>
+            {videoError}<br/><br/>
+            <strong>Tried URL:</strong><br/>
+            {videoSrc}<br/><br/>
+            <strong>Alt URL:</strong><br/>
+            {altSrc}
+          </div>
+        )}
       </div>
 
       {/* Filename & Status */}
@@ -140,7 +185,7 @@ export default function VideoCard({
           <div className="video-actions" style={{ flexDirection: 'column', gap: '8px' }}>
             {!bothPublished && (
               <>
-                {/* TikTok Button - Opens Compliance Drawer */}
+                {/* TikTok Button */}
                 {!tiktokPublished && (
                   <button 
                     className="btn primary" 
@@ -151,7 +196,7 @@ export default function VideoCard({
                       border: 'none'
                     }}
                   >
-                    📱 Post to TikTok (Compliant)
+                    📱 Post to TikTok
                   </button>
                 )}
 
@@ -170,7 +215,7 @@ export default function VideoCard({
                   </button>
                 )}
 
-                {/* Publish Both Button */}
+                {/* Publish Both */}
                 {!tiktokPublished && !youtubePublished && (
                   <button 
                     className="btn primary" 
@@ -181,7 +226,7 @@ export default function VideoCard({
                       border: 'none'
                     }}
                   >
-                    🚀 Publish Both (YouTube + TikTok Draft)
+                    🚀 Publish Both
                   </button>
                 )}
               </>
