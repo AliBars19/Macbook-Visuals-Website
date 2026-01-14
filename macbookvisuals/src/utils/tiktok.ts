@@ -1,15 +1,13 @@
-// src/utils/tiktok.ts
+// Fixed TikTok publish with proper status polling
+// Add this to your tiktok utils file
+
 import { getValidTikTokToken } from './tokenManager';
 import fs from 'fs';
 
-export interface TikTokPublishResult {
-  success: boolean;
-  videoId?: string;
-  publishId?: string;
-  error?: string;
-}
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
-export interface TikTokPublishOptions {
+interface TikTokPublishOptions {
+  videoId: string;
   title: string;
   privacyLevel: string;
   disableComment: boolean;
@@ -22,85 +20,78 @@ export interface TikTokPublishOptions {
   };
 }
 
-/**
- * Publishes video to TikTok with full Direct Post API compliance
- */
 export async function publishToTikTokCompliant(
   videoPath: string,
   options: TikTokPublishOptions
-): Promise<TikTokPublishResult> {
-  try {
-    console.log('Publishing to TikTok (compliant):', videoPath);
-    console.log('Options:', options);
+) {
+  console.log('Publishing to TikTok (compliant):', videoPath);
+  console.log('Options:', options);
 
+  try {
     const accessToken = await getValidTikTokToken();
     const videoBuffer = fs.readFileSync(videoPath);
     const videoSize = videoBuffer.length;
 
-    console.log(`Video size: ${(videoSize / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`Video size: ${(videoSize / (1024 * 1024)).toFixed(2)} MB`);
 
-    if (videoSize > 287 * 1024 * 1024) {
-      throw new Error('Video exceeds 287MB limit');
-    }
-
-    const CHUNK_SIZE = 10 * 1024 * 1024;
+    // Calculate chunks (Math.floor per TikTok docs)
     const totalChunkCount = Math.floor(videoSize / CHUNK_SIZE);
-
     console.log(`Chunks: ${totalChunkCount}`);
-
-    // Build post_info with all compliance fields
-    const postInfo: any = {
-      title: options.title.substring(0, 150),
-      privacy_level: options.privacyLevel,
-      disable_comment: options.disableComment,
-      disable_duet: options.disableDuet,
-      disable_stitch: options.disableStitch,
-    };
-
-    // Add commercial content disclosure if enabled
-    if (options.commercialContent.enabled) {
-      if (options.commercialContent.yourBrand && options.commercialContent.brandedContent) {
-        postInfo.brand_content_toggle = true;
-        postInfo.brand_organic_toggle = true;
-      } else if (options.commercialContent.brandedContent) {
-        postInfo.brand_content_toggle = true;
-      } else if (options.commercialContent.yourBrand) {
-        postInfo.brand_organic_toggle = true;
-      }
-    }
 
     // Step 1: Initialize upload
     console.log('Initializing upload...');
     
-    const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: JSON.stringify({
-        post_info: postInfo,
-        source_info: {
-          source: 'FILE_UPLOAD',
-          video_size: videoSize,
-          chunk_size: CHUNK_SIZE,
-          total_chunk_count: totalChunkCount,
-        },
-      }),
-    });
+    const postInfo: any = {
+      title: options.title,
+      privacy_level: options.privacyLevel,
+      disable_comment: options.disableComment,
+      disable_duet: options.disableDuet,
+      disable_stitch: options.disableStitch,
+      video_cover_timestamp_ms: 1000,
+    };
 
-    const initText = await initResponse.text();
+    // Add commercial content flags if enabled
+    if (options.commercialContent.enabled) {
+      if (options.commercialContent.yourBrand) {
+        postInfo.brand_content_toggle = true;
+      }
+      if (options.commercialContent.brandedContent) {
+        postInfo.brand_organic_toggle = true;
+      }
+    }
+
+    const initResponse = await fetch(
+      'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: JSON.stringify({
+          post_info: postInfo,
+          source_info: {
+            source: 'FILE_UPLOAD',
+            video_size: videoSize,
+            chunk_size: CHUNK_SIZE,
+            total_chunk_count: totalChunkCount,
+          },
+        }),
+      }
+    );
+
     console.log('Init status:', initResponse.status);
 
     if (!initResponse.ok) {
-      throw new Error(`Init failed: ${initText}`);
+      const errorText = await initResponse.text();
+      console.error('Init failed:', errorText);
+      throw new Error(`Init failed: ${errorText}`);
     }
 
-    const initData = JSON.parse(initText);
-    const uploadUrl = initData.data.upload_url;
-    const publishId = initData.data.publish_id;
+    const initData = await initResponse.json();
+    const { publish_id, upload_url } = initData.data;
 
-    console.log('✓ Upload initialized, ID:', publishId);
+    console.log(`✓ Upload initialized, ID: ${publish_id}`);
 
     // Step 2: Upload chunks
     for (let i = 0; i < totalChunkCount; i++) {
@@ -110,18 +101,18 @@ export async function publishToTikTokCompliant(
 
       console.log(`Uploading chunk ${i + 1}/${totalChunkCount}...`);
 
-      const uploadResponse = await fetch(uploadUrl, {
+      const uploadResponse = await fetch(upload_url, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'video/mp4',
           'Content-Range': `bytes ${start}-${end - 1}/${videoSize}`,
           'Content-Length': chunk.length.toString(),
+          'Content-Type': 'video/mp4',
         },
         body: chunk,
       });
 
       if (!uploadResponse.ok) {
-        throw new Error(`Chunk ${i + 1} failed: ${uploadResponse.status}`);
+        throw new Error(`Chunk ${i + 1} upload failed: ${uploadResponse.status}`);
       }
 
       console.log(`✓ Chunk ${i + 1}/${totalChunkCount} uploaded`);
@@ -129,81 +120,76 @@ export async function publishToTikTokCompliant(
 
     console.log('✓ All chunks uploaded');
 
-    // Step 3: Check status
-    console.log('Checking publish status...');
+    // Step 3: Poll for publish status until PUBLISH_COMPLETE
+    console.log('Waiting for TikTok to process and publish...');
     
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const maxAttempts = 60; // 5 minutes max (5s intervals)
+    let attempts = 0;
+    let finalStatus = null;
 
-    const statusResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/status/fetch/', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: JSON.stringify({
-        publish_id: publishId,
-      }),
-    });
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      attempts++;
 
-    if (statusResponse.ok) {
-      const statusData = await statusResponse.json();
-      const status = statusData.data.status;
-      
-      console.log('Status:', status);
+      try {
+        const statusResponse = await fetch(
+          'https://open.tiktokapis.com/v2/post/publish/status/fetch/',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json; charset=UTF-8',
+            },
+            body: JSON.stringify({ publish_id }),
+          }
+        );
 
-      if (status === 'PUBLISH_COMPLETE') {
-        const videoId = statusData.data.publicaly_available_post_id?.[0] || publishId;
-        console.log('✓ Published directly! Video ID:', videoId);
+        if (!statusResponse.ok) {
+          console.error('Status check failed:', statusResponse.status);
+          continue;
+        }
+
+        const statusData = await statusResponse.json();
+        const status = statusData.data?.status;
         
-        return {
-          success: true,
-          videoId: videoId,
-          publishId: publishId,
-        };
+        console.log(`[${attempts}/${maxAttempts}] Status: ${status}`);
+
+        if (status === 'PUBLISH_COMPLETE') {
+          finalStatus = statusData.data;
+          console.log('✓ Video published successfully!');
+          
+          if (finalStatus.publicaly_available_post_id?.[0]) {
+            console.log(`✓ Post ID: ${finalStatus.publicaly_available_post_id[0]}`);
+          }
+          
+          break;
+        } else if (status === 'FAILED') {
+          const failReason = statusData.data?.fail_reason || 'Unknown error';
+          throw new Error(`Publish failed: ${failReason}`);
+        }
+
+        // Continue polling for: PROCESSING_UPLOAD, PROCESSING_DOWNLOAD, PROCESSING_TRANSCODE, etc.
+        
+      } catch (error) {
+        console.error('Status check error:', error);
+        // Continue polling even if one check fails
       }
     }
 
-    // Default: uploaded (may be in drafts)
-    console.log('✓ Video uploaded with compliance data');
-    console.log('📱 Check TikTok app for status');
+    if (!finalStatus || finalStatus.status !== 'PUBLISH_COMPLETE') {
+      console.warn('⚠️  Publish status check timed out - video may still be processing');
+      console.warn('Check TikTok app manually to verify publish status');
+    }
 
     return {
       success: true,
-      publishId: publishId,
-      videoId: publishId,
+      publishId: publish_id,
+      status: finalStatus?.status || 'UNKNOWN',
+      postId: finalStatus?.publicaly_available_post_id?.[0],
     };
 
   } catch (error) {
-    console.error('TikTok upload error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
-
-/**
- * Gets TikTok user info
- */
-export async function getTikTokUserInfo(): Promise<any> {
-  try {
-    const accessToken = await getValidTikTokToken();
-
-    const response = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get user info');
-    }
-
-    const data = await response.json();
-    return data.data.user;
-  } catch (error) {
-    console.error('Error getting TikTok user info:', error);
+    console.error('TikTok publish error:', error);
     throw error;
   }
 }
