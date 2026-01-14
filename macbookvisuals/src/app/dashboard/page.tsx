@@ -94,7 +94,7 @@ export default function Dashboard() {
     setVideos((prev) => prev.filter((v) => v.id !== videoId));
   };
 
-  // TikTok Compliant Publish - Opens Drawer
+  // TikTok Publish - Direct API call (now opens drawer after audit approval)
   const handleTikTokPublishClick = (videoId: string) => {
     const video = videos.find(v => v.id === videoId);
     if (video) {
@@ -144,7 +144,7 @@ export default function Dashboard() {
     }
   };
 
-  // Publish Both - YouTube + TikTok Draft
+  // Publish Both - YouTube + TikTok Public (post-audit)
   const handlePublishBoth = async (videoId: string) => {
     try {
       const video = videos.find(v => v.id === videoId);
@@ -158,7 +158,7 @@ export default function Dashboard() {
           publishData: {
             videoId: videoId,
             title: video.tiktok.caption,
-            privacyLevel: 'SELF_ONLY', // Upload as draft
+            privacyLevel: 'PUBLIC_TO_EVERYONE', // Post-audit: publish publicly
             disableComment: false,
             disableDuet: false,
             disableStitch: false,
